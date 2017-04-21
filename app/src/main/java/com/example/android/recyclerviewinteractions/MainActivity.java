@@ -2,16 +2,19 @@ package com.example.android.recyclerviewinteractions;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import java.util.ArrayDeque;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TodoAdapter.OnTodoCheckedChangeListener {
 
     // The layout element representing our list of TODOs.
     private RecyclerView mTodoListRecyclerView;
@@ -21,6 +24,8 @@ public class MainActivity extends AppCompatActivity {
 
     // A list of all the TODOs the user has entered (we'll represent them as an adapter).
     private TodoAdapter mTodoAdapter;
+
+    private Toast mTodoToast;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +42,11 @@ public class MainActivity extends AppCompatActivity {
         mTodoListRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mTodoListRecyclerView.setHasFixedSize(true);
 
-        mTodoAdapter = new TodoAdapter();
+        mTodoListRecyclerView.setItemAnimator(new DefaultItemAnimator());
+
+        mTodoToast = null;
+
+        mTodoAdapter = new TodoAdapter(this);
         mTodoListRecyclerView.setAdapter(mTodoAdapter);
 
         // Use ID to grab a reference to the layout element for the button to add a TODO.
@@ -61,10 +70,36 @@ public class MainActivity extends AppCompatActivity {
                  * displayed, clear the text in the text entry box.
                  */
                 if (!TextUtils.isEmpty(todoText)) {
+                    mTodoListRecyclerView.scrollToPosition(0);
                     mTodoAdapter.addTodo(todoText);
                     mTodoEntryEditText.setText("");
                 }
             }
         });
+
+        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                ((TodoAdapter.TodoViewHolder)viewHolder).removeFromList();
+            }
+        };
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
+        itemTouchHelper.attachToRecyclerView(mTodoListRecyclerView);
+    }
+
+    @Override
+    public void onTodoCheckedChange(String todo, boolean isChecked) {
+        if (mTodoToast != null) {
+            mTodoToast.cancel();
+        }
+        String statusMessage = isChecked ? "COMPLETED" : "MARKED INCOMPLETE";
+        mTodoToast = Toast.makeText(this, statusMessage + ": " + todo, Toast.LENGTH_LONG);
+        mTodoToast.show();
     }
 }
